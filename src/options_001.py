@@ -105,18 +105,21 @@ def generateRandomSinPath(startX, stopX, anchorAtStart=True, anchorYPos=0, r=0.5
 
     return tube
 
-def generatePutOption(p, putPos=3, size=6):
+def generatePutOption(p, putPos=3, size=6, zPos=0, showText=True):
 
     axis3D = np.array([1,0,0])
     yPos = -1
 
     # Plot the arrow at the bottom signifying the 
     # time of expiry
+
+    if size < 2:
+        yPos = -2
     arrow1 = pv.Arrow( start= ([size-1., yPos, 0]), direction=axis3D, tip_length=0.5, tip_radius=0.15, shaft_radius=.025)
     arrow2 = pv.Arrow( start= ([1, yPos, 0]), direction=axis3D*-1, tip_length=0.5, tip_radius=0.15, shaft_radius=.025)
     axis1  = pv.Cylinder( radius = 0.025, direction=axis3D, center=np.array([0.5*size, yPos, 0]), height=size, resolution=100 )
     
-    p.add_point_labels([(size/2,-2,0)], [ 'time to expiry'], 
+    p.add_point_labels([(size/2,yPos-1,0)], [ 'time to expiry'], 
         font_family='times', font_size=20, fill_shape=False, shape=None, 
         bold=False, text_color='#aeb6bf',
         show_points=False, point_size=0, point_color=(0.3,0.3,0.3))
@@ -143,22 +146,29 @@ def generatePutOption(p, putPos=3, size=6):
 
     # Put option line 
     for i in np.linspace(0, size, int(size/(dashSize+spaceSize)) ):
-        cyl = pv.Cylinder( radius = 0.025, direction=axis3D, center=np.array([i+dashSize/2, putPos, 0]), height=dashSize, resolution=100 )
-        p.add_mesh( cyl, color='#85929e' )
+        cyl = pv.Cylinder( radius = 0.025, direction=axis3D, center=np.array([i+dashSize/2, putPos, zPos]), height=dashSize, resolution=100 )
+        p.add_mesh( cyl, color='#abebc6' )
 
-    plane = pv.Plane(center=( size/2 , putPos/2,0), direction=(0,0,1), i_size=size, j_size=putPos)
+    if zPos != 0:
+        for i in np.linspace(0, size, int(size/(dashSize+spaceSize)) ):
+            cyl = pv.Cylinder( radius = 0.025, direction=axis3D, center=np.array([i+dashSize/2, putPos, 0]), height=dashSize, resolution=100 )
+            p.add_mesh( cyl, color='#abebc6' )
+
+    plane = pv.Plane(center=( size/2 , putPos/2, zPos), direction=(0,0,1), i_size=size, j_size=putPos)
     plane['scalars'] = np.ones(plane.n_points)
-    p.add_mesh( plane,  color='#85929e', opacity=0.1, show_edges=True, edge_color = '#85929e' )
+    p.add_mesh( plane,  color='#abebc6', opacity=0.1, show_edges=True, edge_color = '#abebc6' )
 
-    p.add_point_labels([(size/2, putPos/2,0)], [ 'buyer makes money here'], 
-        font_family='times', font_size=20, fill_shape=False, shape=None, 
-        bold=False, text_color='#85929e',
-        show_points=False, point_size=0, point_color=(0.3,0.3,0.3))
 
-    p.add_point_labels([(-3, putPos-0.25, 0)], [ 'buy put'], 
-        font_family='times', font_size=20, fill_shape=False, shape=None, 
-        bold=False, text_color='#85929e',
-        show_points=False, point_size=0, point_color=(0.3,0.3,0.3))
+    if showText:
+        p.add_point_labels([(size/2, putPos/2,0)], [ 'buyer makes money here'], 
+            font_family='times', font_size=20, fill_shape=False, shape=None, 
+            bold=False, text_color='#85929e',
+            show_points=False, point_size=0, point_color=(0.3,0.3,0.3))
+
+        p.add_point_labels([(-3, putPos-0.25, 0)], [ 'buy put'], 
+            font_family='times', font_size=20, fill_shape=False, shape=None, 
+            bold=False, text_color='#85929e',
+            show_points=False, point_size=0, point_color=(0.3,0.3,0.3))
 
 
     return
@@ -255,6 +265,114 @@ def probabilities():
     return 
 
 
+def compareCurrentAndStrike():
+
+
+    knownPath = generateRandomPath(
+                -10, 0, 
+                anchorAtStart=False, anchorYPos=5, 
+                r=1, scalars = None, useOld=True)
+
+    unknownPath = generateRandomSinPath(
+                    0, 10, 
+                    anchorAtStart=True, anchorYPos=5, 
+                    r=1, sinR = 2, scalars = None, useOld=True)
+
+    
+    # pv.set_plot_theme('document')
+    cPos = [(-23.05612034150191, -2.7693125110075827, 29.020487596695087),
+            (0.4523407025296695, 5.3499999940395355, 0.0),
+            (-0.02717479322234445, 0.96815896925231, 0.248856868238808)]
+
+
+    p = pv.Plotter(
+            window_size=(1000, int(1000/1.618)),
+            polygon_smoothing=True,
+            point_smoothing=True,
+            line_smoothing=True,)
+
+    # Figure (a)
+    p.reset_camera()
+    addBasicsToPlotter(p, 2)
+
+    generatePutOption(p, putPos=1.5, size=6, zPos=0, showText=False)
+    generatePutOption(p, putPos=3.5, size=6, zPos=0, showText=False)
+
+    p.add_mesh( knownPath, color='#3498db' )
+    p.add_mesh( unknownPath, color='#af7ac5', opacity=0.5 )
+
+    p.add_point_labels([(-13,-0.25,0), (12,-0.5,0), (-2,11,0)], [ 'past', 'future', 'price'], 
+        font_family='times', font_size=40, fill_shape=False, shape=None, 
+        bold=False, text_color='orange',
+        show_points=False, point_size=0, point_color=(0.3,0.3,0.3))
+
+   
+
+    p.reset_camera()
+    p.link_views()
+    # cPos = p.show(screenshot='../images/probs_1.png')
+    cPos = p.show(cpos = cPos, screenshot='../images/probs_1.png')
+
+    print(cPos)
+    
+    return 
+
+
+
+def compareExpiry():
+
+
+    knownPath = generateRandomPath(
+                -10, 0, 
+                anchorAtStart=False, anchorYPos=5, 
+                r=1, scalars = None, useOld=True)
+
+    unknownPath = generateRandomSinPath(
+                    0, 10, 
+                    anchorAtStart=True, anchorYPos=5, 
+                    r=1, sinR = 2, scalars = None, useOld=True)
+
+    
+    # pv.set_plot_theme('document')
+    cPos = [(-23.05612034150191, -2.7693125110075827, 29.020487596695087),
+            (0.4523407025296695, 5.3499999940395355, 0.0),
+            (-0.02717479322234445, 0.96815896925231, 0.248856868238808)]
+
+
+    p = pv.Plotter(
+            window_size=(1000, int(1000/1.618)),
+            polygon_smoothing=True,
+            point_smoothing=True,
+            line_smoothing=True,)
+
+    # Figure (a)
+    p.reset_camera()
+    addBasicsToPlotter(p, 2)
+
+    generatePutOption(p, putPos=3, size=6, zPos=0, showText=False)
+    generatePutOption(p, putPos=3, size=1, zPos=0, showText=False)
+
+    p.add_mesh( knownPath, color='#3498db' )
+    p.add_mesh( unknownPath, color='#af7ac5', opacity=0.5 )
+
+    p.add_point_labels([(-13,-0.25,0), (12,-0.5,0), (-2,11,0)], [ 'past', 'future', 'price'], 
+        font_family='times', font_size=40, fill_shape=False, shape=None, 
+        bold=False, text_color='orange',
+        show_points=False, point_size=0, point_color=(0.3,0.3,0.3))
+
+   
+
+    p.reset_camera()
+    p.link_views()
+    # cPos = p.show(screenshot='../images/probs_1.png')
+    cPos = p.show(cpos = cPos, screenshot='../images/probs_2.png')
+
+    print(cPos)
+    
+    return 
+
 if __name__ == '__main__':
     # multiPath()
-    probabilities()
+    # probabilities()
+    # compareCurrentAndStrike()
+    compareExpiry()
