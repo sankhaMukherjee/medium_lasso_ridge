@@ -29,7 +29,7 @@ def addBasicsToPlotter(p, n=3):
 
     return
 
-def generateRandomPath(startX, stopX, anchorAtStart=True, anchorYPos=0, r=0.5,scalars = None):
+def generateRandomPath(startX, stopX, anchorAtStart=True, anchorYPos=0, r=0.5,scalars = None, useOld=True):
 
     if scalars is None:
         nPts = 100
@@ -43,6 +43,11 @@ def generateRandomPath(startX, stopX, anchorAtStart=True, anchorYPos=0, r=0.5,sc
         yPts = yPts - yPts[0] + anchorYPos
     else:
         yPts = yPts - yPts[-1] + anchorYPos
+
+    if useOld:
+        yPts = np.load('../images/yPts1.npy')
+    else:
+        np.save('../images/yPts1.npy', yPts)
 
 
     points = np.column_stack((xPts, yPts, zPts))
@@ -71,7 +76,7 @@ def generateRandomSinPath(startX, stopX, anchorAtStart=True, anchorYPos=0, r=0.5
 
     xPts = np.linspace(startX, stopX, nPts)
     zPts = np.zeros(nPts)
-    yPts = np.sin(xPts)*sinR
+    yPts = - np.sin(xPts + np.pi/6)*sinR
     yPts += np.cumsum( (np.random.rand(nPts) - 0.5)*r )
     if anchorAtStart:
         yPts = yPts - yPts[0] + anchorYPos
@@ -100,18 +105,60 @@ def generateRandomSinPath(startX, stopX, anchorAtStart=True, anchorYPos=0, r=0.5
 
     return tube
 
-def generatePutOption(p, size=6):
+def generatePutOption(p, putPos=3, size=6):
 
     axis3D = np.array([1,0,0])
     yPos = -1
 
+    # Plot the arrow at the bottom signifying the 
+    # time of expiry
     arrow1 = pv.Arrow( start= ([size-1., yPos, 0]), direction=axis3D, tip_length=0.5, tip_radius=0.15, shaft_radius=.025)
     arrow2 = pv.Arrow( start= ([1, yPos, 0]), direction=axis3D*-1, tip_length=0.5, tip_radius=0.15, shaft_radius=.025)
     axis1  = pv.Cylinder( radius = 0.025, direction=axis3D, center=np.array([0.5*size, yPos, 0]), height=size, resolution=100 )
     
+    p.add_point_labels([(size/2,-2,0)], [ 'time to expiry'], 
+        font_family='times', font_size=20, fill_shape=False, shape=None, 
+        bold=False, text_color='#aeb6bf',
+        show_points=False, point_size=0, point_color=(0.3,0.3,0.3))
+
     p.add_mesh(arrow1, color='#aeb6bf')
     p.add_mesh(arrow2, color='#aeb6bf')
     p.add_mesh(axis1, color='#aeb6bf')
+
+
+    # Dashed lines for various purposes ...
+    dashSize = 0.1
+    spaceSize = 0.05
+    yPos = 5
+
+    # Horizontal blue line
+    for i in np.linspace(0, 10, int(10/(dashSize+spaceSize)) ):
+        cyl = pv.Cylinder( radius = 0.025, direction=axis3D, center=np.array([i+dashSize/2, yPos, 0]), height=dashSize, resolution=100 )
+        p.add_mesh( cyl, color='#3498db' )
+
+    # vertical line
+    for i in np.linspace(0, 10, int(10/(dashSize+spaceSize)) ):
+        cyl = pv.Cylinder( radius = 0.025, direction=axis3D, center=np.array([size , i+dashSize/2, 0]), height=dashSize, resolution=100 )
+        p.add_mesh( cyl, color='#aeb6bf' )
+
+    # Put option line 
+    for i in np.linspace(0, size, int(size/(dashSize+spaceSize)) ):
+        cyl = pv.Cylinder( radius = 0.025, direction=axis3D, center=np.array([i+dashSize/2, putPos, 0]), height=dashSize, resolution=100 )
+        p.add_mesh( cyl, color='#85929e' )
+
+    plane = pv.Plane(center=( size/2 , putPos/2,0), direction=(0,0,1), i_size=size, j_size=putPos)
+    plane['scalars'] = np.ones(plane.n_points)
+    p.add_mesh( plane,  color='#85929e', opacity=0.1, show_edges=True, edge_color = '#85929e' )
+
+    p.add_point_labels([(size/2, putPos/2,0)], [ 'buyer makes money here'], 
+        font_family='times', font_size=20, fill_shape=False, shape=None, 
+        bold=False, text_color='#85929e',
+        show_points=False, point_size=0, point_color=(0.3,0.3,0.3))
+
+    p.add_point_labels([(-3, putPos-0.25, 0)], [ 'buy put'], 
+        font_family='times', font_size=20, fill_shape=False, shape=None, 
+        bold=False, text_color='#85929e',
+        show_points=False, point_size=0, point_color=(0.3,0.3,0.3))
 
 
     return
@@ -136,9 +183,9 @@ def multiPath():
     
     # pv.set_plot_theme('document')
 
-    cPos = [(22.51860210286206, 27.416261394371915, 22.066261400332372),
-                (0.4523407025296695, 5.3499999940395355, 0.0),
-                (0.0, 0.0, 1.0)]
+    cPos = [(-23.05612034150191, -2.7693125110075827, 29.020487596695087),
+            (0.4523407025296695, 5.3499999940395355, 0.0),
+            (-0.02717479322234445, 0.96815896925231, 0.248856868238808)]
 
     p = pv.Plotter(window_size=(1000, int(1000/1.618)),
         polygon_smoothing=True,
@@ -166,12 +213,12 @@ def probabilities():
     knownPath = generateRandomPath(
                 -10, 0, 
                 anchorAtStart=False, anchorYPos=5, 
-                r=1, scalars = None)
+                r=1, scalars = None, useOld=True)
 
     unknownPath = generateRandomSinPath(
                     0, 10, 
                     anchorAtStart=True, anchorYPos=5, 
-                    r=1, sinR = 2, scalars = None , useOld=True)
+                    r=1, sinR = 2, scalars = None, useOld=True)
 
     
     # pv.set_plot_theme('document')
@@ -180,6 +227,11 @@ def probabilities():
                 (0.4523407025296695, 5.3499999940395355, 0.0),
                 (0.0, 0.0, 1.0)]
 
+    cPos = [(-23.05612034150191, -2.7693125110075827, 29.020487596695087),
+            (0.4523407025296695, 5.3499999940395355, 0.0),
+            (-0.02717479322234445, 0.96815896925231, 0.248856868238808)]
+
+
     p = pv.Plotter(window_size=(1000, int(1000/1.618)),
         polygon_smoothing=True,
         point_smoothing=True,
@@ -187,12 +239,12 @@ def probabilities():
     
     addBasicsToPlotter(p, 2)
 
-    generatePutOption(p, size=6)
+    generatePutOption(p, putPos=3.5, size=6)
 
     p.add_mesh( knownPath, color='#3498db' )
     p.add_mesh( unknownPath, color='#af7ac5', opacity=0.5 )
 
-    p.add_point_labels([(-11,0,0), (13,0,0), (0,12,0)], [ 'past', 'future', 'price'], 
+    p.add_point_labels([(-13,-0.25,0), (12,-0.5,0), (-2,11,0)], [ 'past', 'future', 'price'], 
         font_family='times', font_size=40, fill_shape=False, shape=None, 
         bold=False, text_color='orange',
         show_points=False, point_size=0, point_color=(0.3,0.3,0.3))
