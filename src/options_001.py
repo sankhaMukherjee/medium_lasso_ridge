@@ -67,7 +67,7 @@ def generateRandomPath(startX, stopX, anchorAtStart=True, anchorYPos=0, r=0.5,sc
 
     return tube
 
-def generateRandomSinPath(startX, stopX, anchorAtStart=True, anchorYPos=0, r=0.5, sinR= 3,scalars = None, useOld=True):
+def generateRandomSinPath(startX, stopX, anchorAtStart=True, anchorYPos=0, r=0.5, sinR= 3,scalars = None, useOld=True, vol=1):
 
     if scalars is None:
         nPts = 100
@@ -78,15 +78,18 @@ def generateRandomSinPath(startX, stopX, anchorAtStart=True, anchorYPos=0, r=0.5
     zPts = np.zeros(nPts)
     yPts = - np.sin(xPts + np.pi/6)*sinR
     yPts += np.cumsum( (np.random.rand(nPts) - 0.5)*r )
-    if anchorAtStart:
-        yPts = yPts - yPts[0] + anchorYPos
-    else:
-        yPts = yPts - yPts[-1] + anchorYPos
+
 
     if useOld:
         yPts = np.load('../images/yPts.npy')
     else:
         np.save('../images/yPts.npy', yPts)
+    
+    yPts *= vol
+    if anchorAtStart:
+        yPts = yPts - yPts[0] + anchorYPos
+    else:
+        yPts = yPts - yPts[-1] + anchorYPos
 
     points = np.column_stack((xPts, yPts, zPts))
     if scalars is None:
@@ -264,7 +267,6 @@ def probabilities():
     
     return 
 
-
 def compareCurrentAndStrike():
 
 
@@ -316,8 +318,6 @@ def compareCurrentAndStrike():
     print(cPos)
     
     return 
-
-
 
 def compareExpiry():
 
@@ -371,8 +371,66 @@ def compareExpiry():
     
     return 
 
+def compareVol():
+
+
+    knownPath = generateRandomPath(
+                -10, 0, 
+                anchorAtStart=False, anchorYPos=5, 
+                r=1, scalars = None, useOld=True)
+
+    unknownPath = generateRandomSinPath(
+                    0, 10, 
+                    anchorAtStart=True, anchorYPos=5, 
+                    r=1, sinR = 2, scalars = None, useOld=True)
+    
+    unknownPath1 = generateRandomSinPath(
+                    0, 10, 
+                    anchorAtStart=True, anchorYPos=5, 
+                    r=1, sinR = 2, scalars = None, useOld=True, vol=0.2)
+
+    
+    # pv.set_plot_theme('document')
+    cPos = [(-23.05612034150191, -2.7693125110075827, 29.020487596695087),
+            (0.4523407025296695, 5.3499999940395355, 0.0),
+            (-0.02717479322234445, 0.96815896925231, 0.248856868238808)]
+
+
+    p = pv.Plotter(
+            window_size=(1000, int(1000/1.618)),
+            polygon_smoothing=True,
+            point_smoothing=True,
+            line_smoothing=True,)
+
+    # Figure (a)
+    p.reset_camera()
+    addBasicsToPlotter(p, 2)
+
+    generatePutOption(p, putPos=3, size=6, zPos=0, showText=False)
+
+    p.add_mesh( knownPath, color='#3498db' )
+    p.add_mesh( unknownPath, color='#af7ac5', opacity=0.5 )
+    p.add_mesh( unknownPath1, color='#f9e79f', opacity=0.5 )
+
+    p.add_point_labels([(-13,-0.25,0), (12,-0.5,0), (-2,11,0)], [ 'past', 'future', 'price'], 
+        font_family='times', font_size=40, fill_shape=False, shape=None, 
+        bold=False, text_color='orange',
+        show_points=False, point_size=0, point_color=(0.3,0.3,0.3))
+
+   
+
+    p.reset_camera()
+    p.link_views()
+    # cPos = p.show(screenshot='../images/probs_1.png')
+    cPos = p.show(cpos = cPos, screenshot='../images/probs_3.png')
+
+    print(cPos)
+    
+    return 
+
 if __name__ == '__main__':
     # multiPath()
     # probabilities()
     # compareCurrentAndStrike()
-    compareExpiry()
+    # compareExpiry()
+    compareVol()
