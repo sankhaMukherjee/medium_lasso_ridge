@@ -7,6 +7,7 @@
 # No environment stuff 
 env/
 env3.5/
+env3.7/
 
 # Dont save any catached files
 **/__pycache__/
