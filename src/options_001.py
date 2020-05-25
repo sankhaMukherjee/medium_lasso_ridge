@@ -1,6 +1,32 @@
 import pyvista as pv 
 import numpy as np 
 
+def plotAxis(p, axis=0, size=10, biDirectional=False, label='', labelShift=(0,0,0), axisColor='orange', axisShift=(0,0,0), labelFontSize=40):
+
+    axis3D    = np.eye(3)[axis] * 1.0
+    axisShift = np.array(axisShift)
+
+    arrow = pv.Arrow( start= size*axis3D + axisShift, direction=axis3D, tip_length=0.5, tip_radius=0.3, shaft_radius=.05)
+    axis1 = pv.Cylinder( radius = 0.05, direction=axis3D, center=0.5*size*axis3D + axisShift, height=size, resolution=100 )
+    p.add_mesh(arrow, color=axisColor)
+    p.add_mesh(axis1, color=axisColor)
+
+    if biDirectional:
+        arrow = pv.Arrow( start= size*axis3D*(-1) + axisShift, direction=axis3D*-1, tip_length=0.5, tip_radius=0.3, shaft_radius=.05)
+        axis1 = pv.Cylinder( radius = 0.05, direction=axis3D, center=0.5*size*axis3D*(-1) + axisShift, height=size, resolution=100 )
+        p.add_mesh(axis1, color=axisColor)
+        p.add_mesh(arrow, color=axisColor)
+
+    if label != '':
+        labelPos = axis3D*size + np.array(labelShift) + axisShift
+        p.add_point_labels([ labelPos ], [ label ], 
+                                font_family='times', font_size=labelFontSize, fill_shape=False, shape=None, 
+                                bold=False, text_color=axisColor,
+                                show_points=False, point_size=0, point_color=(0.3,0.3,0.3))
+
+
+    return
+
 def getAxisToPlotter(p, axis=0, size=10):
 
     axis3D = np.eye(3)[axis] * 1.0
@@ -428,9 +454,45 @@ def compareVol():
     
     return 
 
+
+def optionValue():
+
+    cPos = [(46.93095469766616, -27.88998412496794, 21.302316808833712),
+            (10.972617296125772, -1.0737982175782594, 3.748331228630286),
+            (-0.1725990516380504, 0.36692983017310155, 0.9140963117214644)]
+
+    # cPos = None
+
+
+    p = pv.Plotter(
+            window_size=(1000, int(1000/1.618)),
+            polygon_smoothing=True,
+            point_smoothing=True,
+            line_smoothing=True,)
+
+
+    plotAxis(p, axis=0, size=20, biDirectional=False, label='time to expiry', labelShift=(0,0,0))
+    plotAxis(p, axis=1, size=10, biDirectional=True, label='strike to price', labelShift=(-2,-25,0))
+    plotAxis(p, axis=2, size=10, biDirectional=False, label='option price', labelShift=(-2,0,1))
+
+
+
+
+   
+
+    p.reset_camera()
+    cPos = p.show(cpos = cPos, screenshot='../images/vals_01.png')
+    print(cPos)
+
+
+
+
+    return
+
 if __name__ == '__main__':
     # multiPath()
     # probabilities()
     # compareCurrentAndStrike()
     # compareExpiry()
-    compareVol()
+    # compareVol()
+    optionValue()
