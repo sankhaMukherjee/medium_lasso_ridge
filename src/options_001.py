@@ -454,12 +454,33 @@ def compareVol():
     
     return 
 
+def generateSurface(p, xLim = (0,10), yLim=(0,10), size=6, tau=3, cmap='Blues'):
+
+    x = np.linspace(xLim[0], xLim[1], 200)
+    y = np.linspace(yLim[0], yLim[1], 200)
+    X, Y = np.meshgrid(x, y, indexing='ij')
+
+    tempX =  X-size
+    tempX[tempX>=0] = 0
+    tempX = 1 - np.exp(tempX/tau)
+    
+
+    tempY = 1 - 0.05*np.abs(Y) - 0.001*np.abs(Y)**2 
+
+    putGrid = pv.StructuredGrid( X, Y, tempX*tempY*10)
+    putGrid.point_arrays['put'] =  tempX.flatten(order='F') 
+    p.add_mesh(putGrid, scalars='put', opacity=0.6, cmap=cmap, show_scalar_bar=False)
+    
+    return
 
 def optionValue():
 
-    cPos = [(46.93095469766616, -27.88998412496794, 21.302316808833712),
-            (10.972617296125772, -1.0737982175782594, 3.748331228630286),
-            (-0.1725990516380504, 0.36692983017310155, 0.9140963117214644)]
+    cPos = [(48.328524202142845, -31.04492883772028, 12.7060750926629),
+            (11.98491435919605, -1.2687776221609388, 2.086512605243199),
+            (-0.32167017646972174, -0.05550739912809208, 0.9452233737122527)]
+
+
+
 
     # cPos = None
 
@@ -471,16 +492,14 @@ def optionValue():
             line_smoothing=True,)
 
 
-    plotAxis(p, axis=0, size=20, biDirectional=False, label='time to expiry', labelShift=(0,0,0))
-    plotAxis(p, axis=1, size=10, biDirectional=True, label='strike to price', labelShift=(-2,-25,0))
-    plotAxis(p, axis=2, size=10, biDirectional=False, label='option price', labelShift=(-2,0,1))
+    plotAxis(p, axis=0, size=10, biDirectional=True, axisShift=(16,0,0), labelFontSize=20, label='time to expiry', labelShift=(-26,0,0))
+    plotAxis(p, axis=1, size=12, biDirectional=True,  axisShift=(16,0,0), labelFontSize=20, label='current price - strike price', labelShift=(-3,-31,0))
+    plotAxis(p, axis=2, size=10, biDirectional=False, axisShift=(16,0,0), labelFontSize=20, label='option price', labelShift=(-2,0,1))
 
 
+    generateSurface(p, xLim = (0,20), yLim=(0.3,10), size=16, cmap='Blues')
+    generateSurface(p, xLim = (0,20), yLim=(-0.3,-10), size=16, cmap='Purples')
 
-
-   
-
-    p.reset_camera()
     cPos = p.show(cpos = cPos, screenshot='../images/vals_01.png')
     print(cPos)
 
