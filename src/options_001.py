@@ -1,9 +1,11 @@
 import pyvista as pv 
 import numpy as np 
 
-def plotAxis(p, axis=0, size=10, biDirectional=False, label='', labelShift=(0,0,0), axisColor='orange', axisShift=(0,0,0), labelFontSize=40):
+def plotAxis(p, axis=0, size=10, biDirectional=False, label='', labelShift=(0,0,0), axisColor='orange', axisShift=(0,0,0), labelFontSize=40, reverse=False):
 
     axis3D    = np.eye(3)[axis] * 1.0
+    if reverse:
+        axis3D *= -1
     axisShift = np.array(axisShift)
 
     arrow = pv.Arrow( start= size*axis3D + axisShift, direction=axis3D, tip_length=0.5, tip_radius=0.3, shaft_radius=.05)
@@ -541,11 +543,10 @@ def generateSurface1(p, xLim = (0,10), yLim=(0,10), size=6, tau=3, cmap='Blues',
     tube = path.tube( radius=0.1, scalars='value', radius_factor=10 )
     p.add_mesh( tube, color='#a3e4d7' )
 
-    p.add_point_labels([ (18,2,0) ], [ 'stock price' ], 
+    temp = p.add_point_labels([ (18,2,0) ], [ 'stock price' ], 
                                 font_family='times', font_size=30, fill_shape=False, shape=None, 
                                 bold=False, text_color='#a3e4d7',
                                 show_points=False, point_size=0, point_color=(0.3,0.3,0.3))
-
 
 
     return
@@ -583,6 +584,187 @@ def optionValue1():
 
     return
 
+def generateSurface2(p, xLim = (0,10), yLim=(0,10), size=6, tau=3, cmap='Blues', yShift=0, xPos=40, yPos=40):
+
+    x = np.linspace(xLim[0], xLim[1], 200)
+    y = np.linspace(yLim[0], yLim[1], 200)
+    X, Y = np.meshgrid(x, y, indexing='ij')
+
+    tempX =  X-size
+    tempX[tempX>=0] = 0
+    tempX = 1 - np.exp(tempX/tau)
+
+    tempY = 1 - 0.05*np.abs(Y-np.sin(X)*1.5) - 0.001*np.abs(Y-np.sin(X)*1.5)**2 
+
+    # Generate a location on the surface 
+    zPos = tempX[xPos, yPos] * tempY[xPos, yPos] * 10 
+    xPos = x[xPos]
+    yPos = y[yPos]
+
+    # print(xPos, yPos, zPos)
+
+    plotAxis(p, axis=2, size=zPos*0.9, 
+        biDirectional=False, axisShift=(xPos, yPos,0), labelFontSize=20, 
+        label='max gain', labelShift=(0,-1,1.5),
+        axisColor='#76d7c4')
+
+    plotAxis(p, axis=1, size=10, reverse=True,
+        biDirectional=False, axisShift=(xPos, yPos, zPos), labelFontSize=20, 
+        label='max loss', labelShift=(0,-1,1.5),
+        axisColor='#e6b0aa')
+    
+
+    # This is the actual Put/Call surface
+    putGrid = pv.StructuredGrid( X, Y+yShift, tempX*tempY*10)
+    putGrid.point_arrays['put'] =  tempX.flatten(order='F') 
+    p.add_mesh(putGrid, scalars='put', opacity=0.6, cmap=cmap, show_scalar_bar=False)
+    
+    # Generate the sine plot ...
+    xPts = X[:, 0]
+    zPts = np.zeros(len(xPts))
+    yPts = - np.sin(xPts)*1.5
+
+    points = np.column_stack((xPts, yPts, zPts))
+
+    path = pv.PolyData()
+    path.points = points
+    cells = np.arange(0, len(points), dtype=np.int)
+    cells = np.insert(cells, 0, len(points))
+    path.lines = cells
+    
+    path["value"] = np.ones( xPts.shape )
+
+    tube = path.tube( radius=0.1, scalars='value', radius_factor=10 )
+    p.add_mesh( tube, color='#a3e4d7' )
+
+    temp = p.add_point_labels([ (18,2,0) ], [ 'stock price' ], 
+                                font_family='times', font_size=30, fill_shape=False, shape=None, 
+                                bold=False, text_color='#a3e4d7',
+                                show_points=False, point_size=0, point_color=(0.3,0.3,0.3))
+
+def optionValueGainLoss():
+
+    cPos = [(46.224564233038706, -32.435422121654085, 15.373307260510561),
+            (11.98491435919605, -1.2687776221609388, 2.086512605243199),
+            (-0.2771163158744586, 0.10282640493146748, 0.955318417034361)]
+
+
+
+
+
+    # cPos = None
+
+
+    p = pv.Plotter(
+            window_size=(1000, int(1000/1.618)),
+            polygon_smoothing=True,
+            point_smoothing=True,
+            line_smoothing=True,)
+
+
+    plotAxis(p, axis=0, size=10, biDirectional=True, axisShift=(16,0,0), labelFontSize=20, label='time to expiry', labelShift=(-26,0,0))
+    plotAxis(p, axis=1, size=16, biDirectional=True,  axisShift=(16,0,0), labelFontSize=20, label='current stock price', labelShift=(-3,-36,0))
+    plotAxis(p, axis=2, size=10, biDirectional=False, axisShift=(16,0,0), labelFontSize=20, label='option price', labelShift=(-2,0,1))
+
+
+    # generateSurface2(p, yShift = 0,  xLim = (0,20), yLim = ( 2, 14), size=16, cmap='Blues')
+    generateSurface2(p, yShift = 0,  xLim = (0,20), yLim = (-2,-14), size=16, cmap='Purples')
+
+    cPos = p.show(cpos = cPos, screenshot='../images/GainLoss_02.png')
+    print(cPos)
+
+
+    return
+
+def generateSurface3(p, xLim = (0,10), yLim=(0,10), size=6, tau=3, cmap='Blues', yShift=0, xPos=40, yPos=40):
+
+    x = np.linspace(xLim[0], xLim[1], 200)
+    y = np.linspace(yLim[0], yLim[1], 200)
+    X, Y = np.meshgrid(x, y, indexing='ij')
+
+    tempX =  X-size
+    tempX[tempX>=0] = 0
+    tempX = 1 - np.exp(tempX/tau)
+
+    tempY = 1 - 0.05*np.abs(Y-np.sin(X)*1.5) - 0.001*np.abs(Y-np.sin(X)*1.5)**2 
+
+    # Generate a location on the surface 
+    zPos = tempX[xPos, yPos] * tempY[xPos, yPos] * 10 
+    xPos = x[xPos]
+    yPos = y[yPos]
+
+    # print(xPos, yPos, zPos)
+
+    plotAxis(p, axis=2, size=zPos*0.9, 
+        biDirectional=False, axisShift=(xPos, yPos,0), labelFontSize=20, 
+        label='max gain', labelShift=(0,-1,1.5),
+        axisColor='#76d7c4')
+
+    plotAxis(p, axis=1, size=10, reverse=True,
+        biDirectional=False, axisShift=(xPos, yPos, zPos), labelFontSize=20, 
+        label='max loss', labelShift=(0,-1,1.5),
+        axisColor='#e6b0aa')
+    
+
+    # This is the actual Put/Call surface
+    putGrid = pv.StructuredGrid( X, Y+yShift, tempX*tempY*10)
+    putGrid.point_arrays['put'] =  tempX.flatten(order='F') 
+    p.add_mesh(putGrid, scalars='put', opacity=0.6, cmap=cmap, show_scalar_bar=False)
+    
+    # Generate the sine plot ...
+    xPts = X[:, 0]
+    zPts = np.zeros(len(xPts))
+    yPts = - np.sin(xPts)*1.5
+
+    points = np.column_stack((xPts, yPts, zPts))
+
+    path = pv.PolyData()
+    path.points = points
+    cells = np.arange(0, len(points), dtype=np.int)
+    cells = np.insert(cells, 0, len(points))
+    path.lines = cells
+    
+    path["value"] = np.ones( xPts.shape )
+
+    tube = path.tube( radius=0.1, scalars='value', radius_factor=10 )
+    p.add_mesh( tube, color='#a3e4d7' )
+
+    temp = p.add_point_labels([ (18,2,0) ], [ 'stock price' ], 
+                                font_family='times', font_size=30, fill_shape=False, shape=None, 
+                                bold=False, text_color='#a3e4d7',
+                                show_points=False, point_size=0, point_color=(0.3,0.3,0.3))
+
+def verticalSpread():
+
+    cPos = [(46.224564233038706, -32.435422121654085, 15.373307260510561),
+            (11.98491435919605, -1.2687776221609388, 2.086512605243199),
+            (-0.2771163158744586, 0.10282640493146748, 0.955318417034361)]
+
+    # cPos = None
+
+
+    p = pv.Plotter(
+            window_size=(1000, int(1000/1.618)),
+            polygon_smoothing=True,
+            point_smoothing=True,
+            line_smoothing=True,)
+
+
+    plotAxis(p, axis=0, size=10, biDirectional=True, axisShift=(16,0,0), labelFontSize=20, label='time to expiry', labelShift=(-26,0,0))
+    plotAxis(p, axis=1, size=16, biDirectional=True,  axisShift=(16,0,0), labelFontSize=20, label='current stock price', labelShift=(-3,-36,0))
+    plotAxis(p, axis=2, size=10, biDirectional=False, axisShift=(16,0,0), labelFontSize=20, label='option price', labelShift=(-2,0,1))
+
+
+    # generateSurface2(p, yShift = 0,  xLim = (0,20), yLim = ( 2, 14), size=16, cmap='Blues')
+    generateSurface2(p, yShift = 0,  xLim = (0,20), yLim = (-2,-14), size=16, cmap='Purples')
+
+    cPos = p.show(cpos = cPos, screenshot='../images/GainLoss_02.png')
+    print(cPos)
+
+
+    return
+
+
 
 if __name__ == '__main__':
     # multiPath()
@@ -591,4 +773,6 @@ if __name__ == '__main__':
     # compareExpiry()
     # compareVol()
     # optionValue()
-    optionValue1()
+    # optionValue1()
+    # optionValueGainLoss()
+    verticalSpread()
